@@ -1,20 +1,35 @@
 pipeline {
 	agent any
+
+  environment {
+    DOCKERHUB_REPO = 'rageboy152/devops-assignment-2'
+    IMAGE_TAG = "v1.0.${BUILD_NUMBER}"
+  }
 	
 	stages {
-		stage('Test') {
+		stage('Build Image') {
 			steps {
-				echo 'Perform unit tests here'
+				sh "docker build -t ${DOCKERHUB_REPO}:${IMAGE_TAG} ."
 			}
 		}
-		stage('Build') {
+		stage('Tag Image') {
 			steps {
-				echo 'Build Docker image and tag here'
+				sh "docker tag ${DOCKERHUB_REPO}:${IMAGE_TAG} ${DOCKERHUB_REPO}:latest"
 			}
 		}
-		stage('Push Image') {
+		stage('Push to Docker Hub') {
 			steps {
-				echo 'Push Docker image to DockerHub'
+				withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-login',
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sh '''
+              echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+              docker push ${DOCKERHUB_REPO}:${IMAGE_TAG}
+              docker push ${DOCKERHUB_REPO}:latest
+          '''
+        }
 			}
 		}
 	}
